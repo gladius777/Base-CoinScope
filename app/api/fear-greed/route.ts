@@ -1,22 +1,12 @@
 import { NextResponse } from "next/server";
 
-const CMC_FNG_URL =
-  "https://pro-api.coinmarketcap.com/v3/fear-and-greed/historical?limit=1";
+const ALTERNATIVE_FNG_URL = "https://api.alternative.me/fng/?limit=1";
 
 export async function GET() {
-  const apiKey = process.env.CMC_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "CMC_API_KEY not set" },
-      { status: 500 }
-    );
-  }
-
   try {
-    const res = await fetch(CMC_FNG_URL, {
+    const res = await fetch(ALTERNATIVE_FNG_URL, {
       headers: {
         Accept: "application/json",
-        "X-CMC_PRO_API_KEY": apiKey,
       },
       next: { revalidate: 300 },
     });
@@ -38,6 +28,7 @@ export async function GET() {
       );
     }
 
+    // Alternative.me returns value as string, convert to number
     const value = Math.min(
       100,
       Math.max(0, Number(first.value) ?? 0)

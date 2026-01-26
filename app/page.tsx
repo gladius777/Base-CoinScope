@@ -47,6 +47,11 @@ type FearGreed = {
   value_classification: string;
 } | null;
 
+type GlobalMetrics = {
+  total_market_cap: number;
+  total_volume_24h: number;
+} | null;
+
 const logoCache = new Map<number, string>();
 
 function formatLastUpdatedUTC(date: Date | null): string {
@@ -62,6 +67,7 @@ export default function Home() {
   const [coins, setCoins] = useState<Coin[]>([]);
   const [loading, setLoading] = useState(true);
   const [fearGreed, setFearGreed] = useState<FearGreed>(null);
+  const [globalMetrics, setGlobalMetrics] = useState<GlobalMetrics>(null);
   const [logoMap, setLogoMap] = useState<Record<number, string>>({});
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -70,7 +76,7 @@ export default function Home() {
 
     try {
       const timestamp = Date.now();
-      const [pricesRes, fngRes] = await Promise.all([
+      const [pricesRes, fngRes, globalMetricsRes] = await Promise.all([
         fetch(`/api/prices?t=${timestamp}`, {
           cache: "no-store",
           headers: {
@@ -79,6 +85,13 @@ export default function Home() {
           },
         }),
         fetch(`/api/fear-greed?t=${timestamp}`, {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+          },
+        }),
+        fetch(`/api/global-metrics?t=${timestamp}`, {
           cache: "no-store",
           headers: {
             "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -132,6 +145,31 @@ export default function Home() {
           console.error("Failed to fetch Fear & Greed:", fngRes.status, errorText);
         } catch {
           console.error("Failed to fetch Fear & Greed:", fngRes.status);
+        }
+      }
+
+      // Handle Global Metrics response
+      if (globalMetricsRes.ok) {
+        try {
+          const metrics = await globalMetricsRes.json();
+          if (metrics && typeof metrics.total_market_cap === "number") {
+            setGlobalMetrics({
+              total_market_cap: metrics.total_market_cap,
+              total_volume_24h: metrics.total_volume_24h ?? 0,
+            });
+            console.log(`[${new Date().toLocaleTimeString()}] Updated Global Metrics`);
+          } else {
+            console.warn("Invalid Global Metrics data structure:", metrics);
+          }
+        } catch (parseError) {
+          console.error("Failed to parse Global Metrics JSON:", parseError);
+        }
+      } else {
+        try {
+          const errorText = await globalMetricsRes.text();
+          console.error("Failed to fetch Global Metrics:", globalMetricsRes.status, errorText);
+        } catch {
+          console.error("Failed to fetch Global Metrics:", globalMetricsRes.status);
         }
       }
 
@@ -212,14 +250,9 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatsCard title="Market Cap">
-            {loading || coins.length === 0
+            {loading || !globalMetrics
               ? "—"
-              : formatStatsValue(
-                  coins.reduce(
-                    (sum, c) => sum + (c.quote?.USD?.market_cap ?? 0),
-                    0
-                  )
-                )}
+              : formatStatsValue(globalMetrics.total_market_cap)}
           </StatsCard>
 
           <StatsCard title="Fear & Greed">
@@ -241,14 +274,9 @@ export default function Home() {
           </StatsCard>
 
           <StatsCard title="24h Volume">
-            {loading || coins.length === 0
+            {loading || !globalMetrics
               ? "—"
-              : formatStatsValue(
-                  coins.reduce(
-                    (sum, c) => sum + (c.quote?.USD?.volume_24h ?? 0),
-                    0
-                  )
-                )}
+              : formatStatsValue(globalMetrics.total_volume_24h)}
           </StatsCard>
           </div>
         </div>
@@ -261,25 +289,25 @@ export default function Home() {
 
         {!loading && coins.length > 0 && (
           <div className="overflow-x-auto -mx-3 sm:mx-0">
-            <table className="w-full min-w-[640px] overflow-hidden rounded-2xl border border-[#2C2C2C] border-collapse bg-[#1A1A1A] shadow-lg">
+            <table className="w-full min-w-0 overflow-hidden rounded-xl border border-[#2C2C2C] border-collapse bg-[#1A1A1A] shadow-lg sm:rounded-2xl">
             <thead className="bg-[#2C2C2C]">
               <tr style={{ borderBottom: "1px solid #5E5E5E" }}>
-                <th className="p-2 text-left text-xs font-medium sm:p-3 sm:text-sm" style={{ color: "#A0A0A0" }}>
+                <th className="p-1.5 text-left text-[10px] font-medium sm:p-2 sm:text-xs md:p-3 md:text-sm" style={{ color: "#A0A0A0" }}>
                   Rank
                 </th>
-                <th className="p-2 text-left text-xs font-medium sm:p-3 sm:text-sm" style={{ color: "#A0A0A0" }}>
+                <th className="p-1.5 text-left text-[10px] font-medium sm:p-2 sm:text-xs md:p-3 md:text-sm" style={{ color: "#A0A0A0" }}>
                   Coin
                 </th>
-                <th className="p-2 text-right text-xs font-medium sm:p-3 sm:text-sm" style={{ color: "#A0A0A0" }}>
-                  Price ($)
+                <th className="p-1.5 text-right text-[10px] font-medium sm:p-2 sm:text-xs md:p-3 md:text-sm" style={{ color: "#A0A0A0" }}>
+                  Price
                 </th>
-                <th className="hidden p-2 text-right text-xs font-medium sm:table-cell sm:p-3 sm:text-sm" style={{ color: "#A0A0A0" }}>
+                <th className="hidden p-1.5 text-right text-[10px] font-medium md:table-cell md:p-3 md:text-sm" style={{ color: "#A0A0A0" }}>
                   Market Cap
                 </th>
-                <th className="hidden p-2 text-right text-xs font-medium sm:table-cell sm:p-3 sm:text-sm" style={{ color: "#A0A0A0" }}>
-                  24h Volume
+                <th className="hidden p-1.5 text-right text-[10px] font-medium md:table-cell md:p-3 md:text-sm" style={{ color: "#A0A0A0" }}>
+                  24h Vol
                 </th>
-                <th className="p-2 text-right text-xs font-medium sm:p-3 sm:text-sm" style={{ color: "#A0A0A0" }}>
+                <th className="p-1.5 text-right text-[10px] font-medium sm:p-2 sm:text-xs md:p-3 md:text-sm" style={{ color: "#A0A0A0" }}>
                   24h %
                 </th>
               </tr>
@@ -304,24 +332,24 @@ export default function Home() {
                       borderTop: "1px solid #5E5E5E",
                     }}
                   >
-                    <td className="p-2 tabular-nums align-middle text-xs font-medium sm:p-3 sm:text-sm" style={{ color: "#ffffff" }}>
+                    <td className="p-1.5 tabular-nums align-middle text-[10px] font-medium sm:p-2 sm:text-xs md:p-3 md:text-sm" style={{ color: "#ffffff" }}>
                       {coin.cmc_rank}
                     </td>
 
-                    <td className="p-2 align-middle sm:p-3">
-                      <div className="flex items-center gap-1.5 sm:gap-2">
+                    <td className="p-1.5 align-middle sm:p-2 md:p-3">
+                      <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
                         {logoUrl ? (
                           <img
                             src={logoUrl}
                             alt=""
                             width={28}
                             height={28}
-                            className="h-6 w-6 shrink-0 rounded-full sm:h-7 sm:w-7"
+                            className="h-5 w-5 shrink-0 rounded-full sm:h-6 sm:w-6 md:h-7 md:w-7"
                             loading="lazy"
                           />
                         ) : (
                           <div
-                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-500 text-[10px] font-bold text-white sm:h-7 sm:w-7 sm:text-xs"
+                            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-500 text-[9px] font-bold text-white sm:h-6 sm:w-6 sm:text-[10px] md:h-7 md:w-7 md:text-xs"
                             aria-hidden
                           >
                             {placeholderLetter}
@@ -329,37 +357,37 @@ export default function Home() {
                         )}
                         <div className="min-w-0">
                           <span
-                            className="text-xs font-semibold sm:text-sm"
+                            className="text-[10px] font-semibold sm:text-xs md:text-sm"
                             style={{ color: "#ffffff" }}
                           >
                             {coin.name}
                           </span>
                           {" "}
-                          <span className="text-[10px] sm:text-xs" style={{ color: "#A0A0A0" }}>
+                          <span className="text-[9px] sm:text-[10px] md:text-xs" style={{ color: "#A0A0A0" }}>
                             {coin.symbol}
                           </span>
                         </div>
                       </div>
                     </td>
 
-                    <td className="p-2 text-right tabular-nums align-middle text-xs font-semibold sm:p-3 sm:text-sm" style={{ color: "#ffffff" }}>
+                    <td className="p-1.5 text-right tabular-nums align-middle text-[10px] font-semibold sm:p-2 sm:text-xs md:p-3 md:text-sm" style={{ color: "#ffffff" }}>
                       ${coin.quote.USD.price.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
+                        minimumFractionDigits: coin.quote.USD.price < 1 ? 4 : 2,
+                        maximumFractionDigits: coin.quote.USD.price < 1 ? 4 : 2,
                       })}
                     </td>
 
-                    <td className="hidden p-2 text-right tabular-nums align-middle text-xs font-semibold sm:table-cell sm:p-3 sm:text-sm" style={{ color: "#ffffff" }}>
+                    <td className="hidden p-1.5 text-right tabular-nums align-middle text-[10px] font-semibold md:table-cell md:p-3 md:text-sm" style={{ color: "#ffffff" }}>
                       {formatMarketCap(marketCap)}
                     </td>
 
-                    <td className="hidden p-2 text-right tabular-nums align-middle text-xs font-semibold sm:table-cell sm:p-3 sm:text-sm" style={{ color: "#ffffff" }}>
+                    <td className="hidden p-1.5 text-right tabular-nums align-middle text-[10px] font-semibold md:table-cell md:p-3 md:text-sm" style={{ color: "#ffffff" }}>
                       {formatVolume(volume24h)}
                     </td>
 
-                    <td className="p-2 text-right tabular-nums align-middle sm:p-3">
+                    <td className="p-1.5 text-right tabular-nums align-middle sm:p-2 md:p-3">
                       <span
-                        className="text-xs font-semibold sm:text-sm"
+                        className="text-[10px] font-semibold sm:text-xs md:text-sm"
                         style={{
                           color: isPositive ? "#22c55e" : "#ef4444",
                         }}
