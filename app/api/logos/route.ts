@@ -2,6 +2,19 @@ import { NextResponse } from "next/server";
 
 const CMC_INFO_URL = "https://pro-api.coinmarketcap.com/v2/cryptocurrency/info";
 
+// In-memory cache: shared across all requests
+interface CacheEntry {
+  data: Record<string, string>;
+  timestamp: number;
+}
+
+const logoCache: CacheEntry = {
+  data: {},
+  timestamp: 0,
+};
+
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour in milliseconds
+
 export async function GET(req: Request) {
   const apiKey = process.env.CMC_API_KEY;
   if (!apiKey) {
@@ -20,19 +33,39 @@ export async function GET(req: Request) {
     );
   }
 
+  const now = Date.now();
+  const cacheAge = now - logoCache.timestamp;
+  const isCacheValid = logoCache.timestamp > 0 && cacheAge < CACHE_TTL_MS;
+
+  // Return cached data if valid
+  if (isCacheValid) {
+    const requestedIds = ids.split(",");
+    const cachedResult: Record<string, string> = {};
+    
+    for (const id of requestedIds) {
+      if (logoCache.data[id]) {
+        cachedResult[id] = logoCache.data[id];
+      }
+    }
+    
+    return NextResponse.json(cachedResult);
+  }
+
+  // Cache expired or empty - fetch from CoinMarketCap
   try {
     const res = await fetch(`${CMC_INFO_URL}?id=${ids}`, {
       headers: {
         Accept: "application/json",
         "X-CMC_PRO_API_KEY": apiKey,
       },
-      next: { revalidate: 86400 },
+      cache: "no-store",
     });
 
     if (!res.ok) {
+      const errorText = await res.text().catch(() => "Unknown error");
       return NextResponse.json(
-        { error: "Failed to fetch logos from CMC" },
-        { status: res.status }
+        { error: `Failed to fetch logos from CoinMarketCap: ${res.status} ${errorText}` },
+        { status: 500 }
       );
     }
 
@@ -49,10 +82,24 @@ export async function GET(req: Request) {
       }
     }
 
-    return NextResponse.json(logoMap);
-  } catch {
+    // Update cache with all fetched logos
+    logoCache.data = { ...logoCache.data, ...logoMap };
+    logoCache.timestamp = now;
+
+    // Return only requested IDs
+    const requestedIds = ids.split(",");
+    const result: Record<string, string> = {};
+    for (const id of requestedIds) {
+      if (logoMap[id]) {
+        result[id] = logoMap[id];
+      }
+    }
+
+    return NextResponse.json(result);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Server error" },
+      { error: `Server error while fetching logos: ${errorMessage}` },
       { status: 500 }
     );
   }

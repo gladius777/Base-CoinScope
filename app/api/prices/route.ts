@@ -1,5 +1,18 @@
 import { NextResponse } from "next/server";
 
+// In-memory cache: shared across all requests
+interface CacheEntry {
+  data: any[];
+  timestamp: number;
+}
+
+const pricesCache: CacheEntry = {
+  data: [],
+  timestamp: 0,
+};
+
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
+
 export async function GET() {
   const apiKey = process.env.CMC_API_KEY;
   if (!apiKey) {
@@ -9,26 +22,47 @@ export async function GET() {
     );
   }
 
+  const now = Date.now();
+  const cacheAge = now - pricesCache.timestamp;
+  const isCacheValid = pricesCache.timestamp > 0 && cacheAge < CACHE_TTL_MS;
+
+  // Return cached data if valid
+  if (isCacheValid) {
+    return NextResponse.json(pricesCache.data);
+  }
+
+  // Cache expired or empty - fetch from CoinMarketCap
   try {
     const res = await fetch(
       "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?start=1&limit=100&convert=USD",
       {
         headers: { "X-CMC_PRO_API_KEY": apiKey },
-        next: { revalidate: 300 },
+        cache: "no-store",
       }
     );
 
     if (!res.ok) {
+      const errorText = await res.text().catch(() => "Unknown error");
       return NextResponse.json(
-        { error: "Failed to fetch from CMC" },
-        { status: res.status }
+        { error: `Failed to fetch prices from CoinMarketCap: ${res.status} ${errorText}` },
+        { status: 500 }
       );
     }
 
     const data = await res.json();
-    return NextResponse.json(data.data || []);
+    const coinList = data.data || [];
+
+    // Update cache
+    pricesCache.data = coinList;
+    pricesCache.timestamp = now;
+
+    return NextResponse.json(coinList);
   } catch (error) {
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json(
+      { error: `Server error while fetching prices: ${errorMessage}` },
+      { status: 500 }
+    );
   }
 }
 
