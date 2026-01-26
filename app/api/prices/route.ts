@@ -14,7 +14,7 @@ export async function GET() {
       "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?start=1&limit=100&convert=USD",
       {
         headers: { "X-CMC_PRO_API_KEY": apiKey },
-        next: { revalidate: 30 },
+        next: { revalidate: 300 },
       }
     );
 

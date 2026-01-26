@@ -68,36 +68,92 @@ export default function Home() {
   async function loadPrices() {
     setLoading(true);
 
-    const [pricesRes, fngRes] = await Promise.all([
-      fetch("/api/prices"),
-      fetch("/api/fear-greed"),
-    ]);
+    try {
+      const timestamp = Date.now();
+      const [pricesRes, fngRes] = await Promise.all([
+        fetch(`/api/prices?t=${timestamp}`, {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+          },
+        }),
+        fetch(`/api/fear-greed?t=${timestamp}`, {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+          },
+        }),
+      ]);
 
-    const pricesData = await pricesRes.json();
-    const coinList = Array.isArray(pricesData) ? pricesData : [];
-    setCoins(coinList);
+      // Handle prices response
+      if (pricesRes.ok) {
+        try {
+          const pricesData = await pricesRes.json();
+          const coinList = Array.isArray(pricesData) ? pricesData : [];
+          if (coinList.length > 0) {
+            setCoins(coinList);
+            console.log(`[${new Date().toLocaleTimeString()}] Updated ${coinList.length} coins`);
+          } else {
+            console.warn("Prices response is empty");
+          }
+        } catch (parseError) {
+          console.error("Failed to parse prices JSON:", parseError);
+        }
+      } else {
+        try {
+          const errorText = await pricesRes.text();
+          console.error("Failed to fetch prices:", pricesRes.status, errorText);
+        } catch {
+          console.error("Failed to fetch prices:", pricesRes.status);
+        }
+      }
 
-    if (fngRes.ok) {
-      const fng = await fngRes.json();
-      setFearGreed({
-        value: fng.value ?? 0,
-        value_classification: fng.value_classification ?? "Unknown",
-      });
-    } else {
-      setFearGreed(null);
+      // Handle Fear & Greed response
+      if (fngRes.ok) {
+        try {
+          const fng = await fngRes.json();
+          if (fng && typeof fng.value === "number") {
+            setFearGreed({
+              value: fng.value,
+              value_classification: fng.value_classification || "Unknown",
+            });
+            console.log(`[${new Date().toLocaleTimeString()}] Updated Fear & Greed: ${fng.value} - ${fng.value_classification}`);
+          } else {
+            console.warn("Invalid Fear & Greed data structure:", fng);
+          }
+        } catch (parseError) {
+          console.error("Failed to parse Fear & Greed JSON:", parseError);
+        }
+      } else {
+        try {
+          const errorText = await fngRes.text();
+          console.error("Failed to fetch Fear & Greed:", fngRes.status, errorText);
+        } catch {
+          console.error("Failed to fetch Fear & Greed:", fngRes.status);
+        }
+      }
+
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.error("Error loading prices:", error);
+    } finally {
+      setLoading(false);
     }
-
-    setLastUpdated(new Date());
-    setLoading(false);
   }
 
   useEffect(() => {
     sdk.actions.ready();
     const runLoadPrices = () => {
+      console.log(`[${new Date().toLocaleTimeString()}] Triggering data refresh...`);
       void loadPrices();
     };
+    // Initial load
     const timeout = setTimeout(runLoadPrices, 0);
+    // Auto-refresh every 60 seconds
     const interval = setInterval(runLoadPrices, 60000);
+    console.log("Auto-refresh interval set to 60 seconds");
     return () => {
       clearTimeout(timeout);
       clearInterval(interval);
@@ -133,28 +189,28 @@ export default function Home() {
   }, [coins]);
 
   return (
-    <main className="min-h-screen bg-[#1F1AB2] text-amber-950 p-6">
+    <main className="min-h-screen bg-[#1F1AB2] text-amber-950 p-3 sm:p-6">
       <div className="mx-auto w-full max-w-5xl">
-        <h1 className="mb-6 flex items-center gap-3 text-4xl font-bold" style={{ color: "#ffffff" }}>
+        <h1 className="mb-4 flex items-center gap-2 text-2xl font-bold sm:mb-6 sm:gap-3 sm:text-4xl" style={{ color: "#ffffff" }}>
           <img
             src="/coinscope-logo.png"
             alt=""
             width={48}
             height={48}
-            className="h-9 w-9 shrink-0 object-contain sm:h-11 sm:w-11"
+            className="h-7 w-7 shrink-0 object-contain sm:h-9 sm:w-9 md:h-11 md:w-11"
             style={{ background: "transparent" }}
           />
           <span>CoinScope</span>
         </h1>
 
         {/* Stats cards: Market Cap, Fear & Greed, 24h Volume */}
-        <div className="mb-8">
+        <div className="mb-4 sm:mb-8">
           <div className="mb-2 flex w-full justify-end">
-            <p className="text-[10px]" style={{ color: "#ffffff" }}>
+            <p className="text-[9px] sm:text-[10px]" style={{ color: "#ffffff" }}>
               Last updated: {formatLastUpdatedUTC(lastUpdated)}
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatsCard title="Market Cap">
             {loading || coins.length === 0
               ? "—"
@@ -197,32 +253,33 @@ export default function Home() {
           </div>
         </div>
 
-        {loading && <p>Loading prices...</p>}
+        {loading && <p className="text-sm sm:text-base">Loading prices...</p>}
 
         {!loading && coins.length === 0 && (
-          <p>Unable to load prices right now.</p>
+          <p className="text-sm sm:text-base">Unable to load prices right now.</p>
         )}
 
         {!loading && coins.length > 0 && (
-          <table className="w-full overflow-hidden rounded-2xl border border-[#2C2C2C] border-collapse bg-[#1A1A1A] shadow-lg">
+          <div className="overflow-x-auto -mx-3 sm:mx-0">
+            <table className="w-full min-w-[640px] overflow-hidden rounded-2xl border border-[#2C2C2C] border-collapse bg-[#1A1A1A] shadow-lg">
             <thead className="bg-[#2C2C2C]">
               <tr style={{ borderBottom: "1px solid #5E5E5E" }}>
-                <th className="p-3 text-left text-sm font-medium" style={{ color: "#A0A0A0" }}>
+                <th className="p-2 text-left text-xs font-medium sm:p-3 sm:text-sm" style={{ color: "#A0A0A0" }}>
                   Rank
                 </th>
-                <th className="p-3 text-left text-sm font-medium" style={{ color: "#A0A0A0" }}>
+                <th className="p-2 text-left text-xs font-medium sm:p-3 sm:text-sm" style={{ color: "#A0A0A0" }}>
                   Coin
                 </th>
-                <th className="p-3 text-right text-sm font-medium" style={{ color: "#A0A0A0" }}>
+                <th className="p-2 text-right text-xs font-medium sm:p-3 sm:text-sm" style={{ color: "#A0A0A0" }}>
                   Price ($)
                 </th>
-                <th className="p-3 text-right text-sm font-medium" style={{ color: "#A0A0A0" }}>
+                <th className="hidden p-2 text-right text-xs font-medium sm:table-cell sm:p-3 sm:text-sm" style={{ color: "#A0A0A0" }}>
                   Market Cap
                 </th>
-                <th className="p-3 text-right text-sm font-medium" style={{ color: "#A0A0A0" }}>
+                <th className="hidden p-2 text-right text-xs font-medium sm:table-cell sm:p-3 sm:text-sm" style={{ color: "#A0A0A0" }}>
                   24h Volume
                 </th>
-                <th className="p-3 text-right text-sm font-medium" style={{ color: "#A0A0A0" }}>
+                <th className="p-2 text-right text-xs font-medium sm:p-3 sm:text-sm" style={{ color: "#A0A0A0" }}>
                   24h %
                 </th>
               </tr>
@@ -247,24 +304,24 @@ export default function Home() {
                       borderTop: "1px solid #5E5E5E",
                     }}
                   >
-                    <td className="p-3 tabular-nums align-middle text-sm font-medium" style={{ color: "#ffffff" }}>
+                    <td className="p-2 tabular-nums align-middle text-xs font-medium sm:p-3 sm:text-sm" style={{ color: "#ffffff" }}>
                       {coin.cmc_rank}
                     </td>
 
-                    <td className="p-3 align-middle">
-                      <div className="flex items-center gap-2">
+                    <td className="p-2 align-middle sm:p-3">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         {logoUrl ? (
                           <img
                             src={logoUrl}
                             alt=""
                             width={28}
                             height={28}
-                            className="h-7 w-7 shrink-0 rounded-full"
+                            className="h-6 w-6 shrink-0 rounded-full sm:h-7 sm:w-7"
                             loading="lazy"
                           />
                         ) : (
                           <div
-                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-500 text-xs font-bold text-white"
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-500 text-[10px] font-bold text-white sm:h-7 sm:w-7 sm:text-xs"
                             aria-hidden
                           >
                             {placeholderLetter}
@@ -272,37 +329,37 @@ export default function Home() {
                         )}
                         <div className="min-w-0">
                           <span
-                            className="font-semibold"
+                            className="text-xs font-semibold sm:text-sm"
                             style={{ color: "#ffffff" }}
                           >
                             {coin.name}
                           </span>
                           {" "}
-                          <span style={{ color: "#A0A0A0" }}>
+                          <span className="text-[10px] sm:text-xs" style={{ color: "#A0A0A0" }}>
                             {coin.symbol}
                           </span>
                         </div>
                       </div>
                     </td>
 
-                    <td className="p-3 text-right tabular-nums align-middle font-semibold" style={{ color: "#ffffff" }}>
+                    <td className="p-2 text-right tabular-nums align-middle text-xs font-semibold sm:p-3 sm:text-sm" style={{ color: "#ffffff" }}>
                       ${coin.quote.USD.price.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}
                     </td>
 
-                    <td className="p-3 text-right tabular-nums align-middle font-semibold" style={{ color: "#ffffff" }}>
+                    <td className="hidden p-2 text-right tabular-nums align-middle text-xs font-semibold sm:table-cell sm:p-3 sm:text-sm" style={{ color: "#ffffff" }}>
                       {formatMarketCap(marketCap)}
                     </td>
 
-                    <td className="p-3 text-right tabular-nums align-middle font-semibold" style={{ color: "#ffffff" }}>
+                    <td className="hidden p-2 text-right tabular-nums align-middle text-xs font-semibold sm:table-cell sm:p-3 sm:text-sm" style={{ color: "#ffffff" }}>
                       {formatVolume(volume24h)}
                     </td>
 
-                    <td className="p-3 text-right tabular-nums align-middle">
+                    <td className="p-2 text-right tabular-nums align-middle sm:p-3">
                       <span
-                        className="font-semibold"
+                        className="text-xs font-semibold sm:text-sm"
                         style={{
                           color: isPositive ? "#22c55e" : "#ef4444",
                         }}
@@ -316,6 +373,7 @@ export default function Home() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </main>

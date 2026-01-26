@@ -18,7 +18,7 @@ export async function GET() {
         Accept: "application/json",
         "X-CMC_PRO_API_KEY": apiKey,
       },
-      next: { revalidate: 60 },
+      next: { revalidate: 300 },
     });
 
     if (!res.ok) {
