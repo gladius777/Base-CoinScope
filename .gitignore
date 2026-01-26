@@ -32,6 +32,18 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# SSH keys and sensitive files
+githubbase
+githubbase.pub
+githubbasetracker
+githubbasetracker.pub
+*.pem
+*.key
+
+# temporary files
+.tmp/
 
 # vercel
 .vercel

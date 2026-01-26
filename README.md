@@ -1,36 +1,132 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CoinScope
+
+A modern cryptocurrency price tracker built for Base, featuring real-time market data from CoinMarketCap API.
+
+## Features
+
+- 📊 **Top 100 Cryptocurrencies**: Real-time prices, market cap, and 24h volume
+- 📈 **Fear & Greed Index**: Visual indicator with color-coded sentiment
+- 🎨 **Modern UI**: Dark theme with gradient stats cards and responsive design
+- 🔄 **Auto-refresh**: Data updates automatically every 60 seconds
+- 🖼️ **Coin Logos**: Automatic logo fetching and caching
+
+## Tech Stack
+
+- **Next.js 16** (App Router)
+- **React 19**
+- **TypeScript**
+- **Tailwind CSS**
+- **Farcaster MiniApp SDK**
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+ and npm
+- CoinMarketCap API key ([Get one here](https://coinmarketcap.com/api/))
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone <your-repo-url>
+cd base-price-tracker
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Create `.env.local` file:
+```bash
+cp .env.example .env.local
+```
+
+4. Add your environment variables to `.env.local`:
+```env
+NEXT_PUBLIC_URL=http://localhost:3000
+CMC_API_KEY=your_coinmarketcap_api_key_here
+FARCASTER_HEADER=
+FARCASTER_PAYLOAD=
+FARCASTER_SIGNATURE=
+```
+
+### Running Locally
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Building for Production
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+## Environment Variables
 
-To learn more about Next.js, take a look at the following resources:
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `CMC_API_KEY` | CoinMarketCap API key | Yes |
+| `NEXT_PUBLIC_URL` | Public URL of your app | Yes |
+| `FARCASTER_HEADER` | Farcaster header (for mini-app) | Optional |
+| `FARCASTER_PAYLOAD` | Farcaster payload (for mini-app) | Optional |
+| `FARCASTER_SIGNATURE` | Farcaster signature (for mini-app) | Optional |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**⚠️ Important**: Never commit `.env.local` or expose your API keys. The `.gitignore` file is configured to exclude all `.env*` files except `.env.example`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project Structure
 
-## Deploy on Vercel
+```
+base-price-tracker/
+├── app/
+│   ├── api/              # API routes (server-side)
+│   │   ├── prices/       # CoinMarketCap listings
+│   │   ├── fear-greed/    # Fear & Greed Index
+│   │   └── logos/         # Coin logo fetching
+│   ├── components/        # React components
+│   │   └── StatsCard.tsx  # Stats card component
+│   ├── .well-known/       # Farcaster manifest
+│   ├── layout.tsx         # Root layout
+│   ├── page.tsx           # Main page
+│   └── globals.css        # Global styles
+├── public/                # Static assets
+├── scripts/               # Utility scripts
+└── .env.example           # Environment template
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## API Routes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+All API routes are server-side and use `process.env.CMC_API_KEY` securely:
+
+- `/api/prices` - Fetches top 100 cryptocurrencies
+- `/api/fear-greed` - Fetches Fear & Greed Index
+- `/api/logos` - Fetches coin logos by ID
+
+## Deployment
+
+### Vercel (Recommended)
+
+1. Push your code to GitHub
+2. Import your repository on [Vercel](https://vercel.com)
+3. Add environment variables in Vercel dashboard
+4. Deploy!
+
+### Other Platforms
+
+Ensure you set all required environment variables in your hosting platform's dashboard.
+
+## Security
+
+- ✅ API keys are stored in environment variables only
+- ✅ `.env.local` is gitignored
+- ✅ No API keys in code or commits
+- ✅ Server-side API routes protect sensitive data
+
+## License
+
+MIT
