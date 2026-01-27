@@ -13,7 +13,7 @@ function withValidProperties(properties: MiniAppProperties) {
 export async function GET() {
   const appUrl = process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
 
-  return NextResponse.json({
+  return NextResponse.json(
     {
   "accountAssociation": {
     "header": "eyJmaWQiOi0xLCJ0eXBlIjoiYXV0aCIsImtleSI6IjB4NDQ3QjFDOTY5MThjNWY3MTZmZTFFQTY5QjJEOTY5QjUxMUI1MWJjQSJ9",
