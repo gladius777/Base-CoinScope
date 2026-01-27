@@ -100,13 +100,18 @@ export default function Home() {
         }),
       ]);
 
+      let latestFetchedAt: number | null = null;
+
       // Handle prices response
       if (pricesRes.ok) {
         try {
           const pricesData = await pricesRes.json();
-          const coinList = Array.isArray(pricesData) ? pricesData : [];
+          const coinList = Array.isArray(pricesData.data) ? pricesData.data : (Array.isArray(pricesData) ? pricesData : []);
           if (coinList.length > 0) {
             setCoins(coinList);
+            if (typeof pricesData.fetchedAt === "number") {
+              latestFetchedAt = Math.max(latestFetchedAt ?? 0, pricesData.fetchedAt);
+            }
             console.log(`[${new Date().toLocaleTimeString()}] Updated ${coinList.length} coins`);
           } else {
             console.warn("Prices response is empty");
@@ -132,6 +137,9 @@ export default function Home() {
               value: fng.value,
               value_classification: fng.value_classification || "Unknown",
             });
+            if (typeof fng.fetchedAt === "number") {
+              latestFetchedAt = Math.max(latestFetchedAt ?? 0, fng.fetchedAt);
+            }
             console.log(`[${new Date().toLocaleTimeString()}] Updated Fear & Greed: ${fng.value} - ${fng.value_classification}`);
           } else {
             console.warn("Invalid Fear & Greed data structure:", fng);
@@ -157,6 +165,9 @@ export default function Home() {
               total_market_cap: metrics.total_market_cap,
               total_volume_24h: metrics.total_volume_24h ?? 0,
             });
+            if (typeof metrics.fetchedAt === "number") {
+              latestFetchedAt = Math.max(latestFetchedAt ?? 0, metrics.fetchedAt);
+            }
             console.log(`[${new Date().toLocaleTimeString()}] Updated Global Metrics`);
           } else {
             console.warn("Invalid Global Metrics data structure:", metrics);
@@ -173,7 +184,10 @@ export default function Home() {
         }
       }
 
-      setLastUpdated(new Date());
+      // Set lastUpdated based on the latest fetchedAt timestamp from APIs
+      if (latestFetchedAt !== null) {
+        setLastUpdated(new Date(latestFetchedAt));
+      }
     } catch (error) {
       console.error("Error loading prices:", error);
     } finally {

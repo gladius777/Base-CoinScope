@@ -28,7 +28,10 @@ export async function GET() {
 
   // Return cached data if valid
   if (isCacheValid) {
-    return NextResponse.json(pricesCache.data);
+    return NextResponse.json({
+      data: pricesCache.data,
+      fetchedAt: pricesCache.timestamp,
+    });
   }
 
   // Cache expired or empty - fetch from CoinMarketCap
@@ -56,7 +59,10 @@ export async function GET() {
     pricesCache.data = coinList;
     pricesCache.timestamp = now;
 
-    return NextResponse.json(coinList);
+    return NextResponse.json({
+      data: coinList,
+      fetchedAt: now,
+    });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
