@@ -34,6 +34,7 @@ export async function GET() {
 
   // Return cached data if valid
   if (isCacheValid) {
+    console.log(`[SERVER] [${new Date().toISOString()}] Returning cached global metrics (age: ${Math.round(cacheAge / 1000)}s, TTL: ${CACHE_TTL_MS / 1000}s)`);
     return NextResponse.json({
       ...globalMetricsCache.data,
       fetchedAt: globalMetricsCache.timestamp,
@@ -41,6 +42,7 @@ export async function GET() {
   }
 
   // Cache expired or empty - fetch from CoinMarketCap
+  console.log(`[SERVER] [${new Date().toISOString()}] Fetching global metrics from CoinMarketCap (cache expired or empty)`);
   try {
     const res = await fetch(
       "https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest?convert=USD",
@@ -76,6 +78,7 @@ export async function GET() {
     // Update cache
     globalMetricsCache.data = result;
     globalMetricsCache.timestamp = now;
+    console.log(`[SERVER] [${new Date().toISOString()}] Global metrics fetched successfully, cached until ${new Date(now + CACHE_TTL_MS).toISOString()}`);
 
     return NextResponse.json({
       ...result,

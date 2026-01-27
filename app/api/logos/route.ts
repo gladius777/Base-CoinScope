@@ -47,11 +47,15 @@ export async function GET(req: Request) {
         cachedResult[id] = logoCache.data[id];
       }
     }
-    
-    return NextResponse.json(cachedResult);
+    console.log(`[SERVER] [${new Date().toISOString()}] Returning cached logos (age: ${Math.round(cacheAge / 1000)}s, TTL: ${CACHE_TTL_MS / 1000}s)`);
+    return NextResponse.json({
+      ...cachedResult,
+      fetchedAt: logoCache.timestamp,
+    });
   }
 
   // Cache expired or empty - fetch from CoinMarketCap
+  console.log(`[SERVER] [${new Date().toISOString()}] Fetching logos from CoinMarketCap for IDs: ${ids} (cache expired or empty)`);
   try {
     const res = await fetch(`${CMC_INFO_URL}?id=${ids}`, {
       headers: {
@@ -85,6 +89,7 @@ export async function GET(req: Request) {
     // Update cache with all fetched logos
     logoCache.data = { ...logoCache.data, ...logoMap };
     logoCache.timestamp = now;
+    console.log(`[SERVER] [${new Date().toISOString()}] Logos fetched successfully: ${Object.keys(logoMap).length} logos, cached until ${new Date(now + CACHE_TTL_MS).toISOString()}`);
 
     // Return only requested IDs
     const requestedIds = ids.split(",");
@@ -95,7 +100,10 @@ export async function GET(req: Request) {
       }
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      ...result,
+      fetchedAt: now,
+    });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(

@@ -28,6 +28,7 @@ export async function GET() {
 
   // Return cached data if valid
   if (isCacheValid) {
+    console.log(`[SERVER] [${new Date().toISOString()}] Returning cached Fear & Greed (age: ${Math.round(cacheAge / 1000)}s, TTL: ${CACHE_TTL_MS / 1000}s)`);
     return NextResponse.json({
       ...fearGreedCache.data,
       fetchedAt: fearGreedCache.timestamp,
@@ -35,6 +36,7 @@ export async function GET() {
   }
 
   // Cache expired or empty - fetch from Alternative.me
+  console.log(`[SERVER] [${new Date().toISOString()}] Fetching Fear & Greed from Alternative.me (cache expired or empty)`);
   try {
     const res = await fetch(ALTERNATIVE_FNG_URL, {
       headers: {
@@ -76,6 +78,7 @@ export async function GET() {
     // Update cache
     fearGreedCache.data = result;
     fearGreedCache.timestamp = now;
+    console.log(`[SERVER] [${new Date().toISOString()}] Fear & Greed fetched successfully: ${value} - ${value_classification}, cached until ${new Date(now + CACHE_TTL_MS).toISOString()}`);
 
     return NextResponse.json({
       ...result,

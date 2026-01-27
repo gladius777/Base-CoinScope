@@ -28,6 +28,7 @@ export async function GET() {
 
   // Return cached data if valid
   if (isCacheValid) {
+    console.log(`[SERVER] [${new Date().toISOString()}] Returning cached prices (age: ${Math.round(cacheAge / 1000)}s, TTL: ${CACHE_TTL_MS / 1000}s)`);
     return NextResponse.json({
       data: pricesCache.data,
       fetchedAt: pricesCache.timestamp,
@@ -35,6 +36,7 @@ export async function GET() {
   }
 
   // Cache expired or empty - fetch from CoinMarketCap
+  console.log(`[SERVER] [${new Date().toISOString()}] Fetching prices from CoinMarketCap (cache expired or empty)`);
   try {
     const res = await fetch(
       "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?start=1&limit=100&convert=USD",
@@ -58,6 +60,7 @@ export async function GET() {
     // Update cache
     pricesCache.data = coinList;
     pricesCache.timestamp = now;
+    console.log(`[SERVER] [${new Date().toISOString()}] Prices fetched successfully: ${coinList.length} coins, cached until ${new Date(now + CACHE_TTL_MS).toISOString()}`);
 
     return NextResponse.json({
       data: coinList,
