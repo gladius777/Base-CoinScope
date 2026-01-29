@@ -10,8 +10,10 @@ function withValidProperties(properties: MiniAppProperties) {
   );
 }
 
+const PRODUCTION_URL = "https://base-coin-scope.vercel.app";
+
 export async function GET() {
-  const appUrl = process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
+  const appUrl = process.env.NEXT_PUBLIC_URL || PRODUCTION_URL;
 
   return NextResponse.json({
     accountAssociation: {
@@ -21,21 +23,21 @@ export async function GET() {
     },
     miniapp: withValidProperties({
       version: "1",
-      name: "Base Price Tracker",
+      name: "CoinScope",
       homeUrl: appUrl,
-      iconUrl: `${appUrl}/globe.svg`,
-      splashImageUrl: `${appUrl}/next.svg`,
+      iconUrl: `${appUrl}/coinscope-logo.png`,
+      splashImageUrl: `${appUrl}/icon.png`,
       splashBackgroundColor: "#000000",
       subtitle: "Track crypto prices on Base",
       description: "Live CoinMarketCap prices for BTC, ETH, SOL, and more.",
-      screenshotUrls: [`${appUrl}/globe.svg`],
+      screenshotUrls: [`${appUrl}/screenshot1.png`],
       primaryCategory: "finance",
       tags: ["prices", "crypto", "base"],
-      heroImageUrl: `${appUrl}/globe.svg`,
+      heroImageUrl: `${appUrl}/coinscope-logo.png`,
       tagline: "Watch prices in real time",
-      ogTitle: "Base Price Tracker",
+      ogTitle: "CoinScope",
       ogDescription: "Live CoinMarketCap prices with Base-friendly UI.",
-      ogImageUrl: `${appUrl}/globe.svg`,
+      ogImageUrl: `${appUrl}/coinscope-logo.png`,
     }),
   });
 }
