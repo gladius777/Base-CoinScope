@@ -1,8 +1,7 @@
 "use client";
 
 import { StatsCard } from "./components/StatsCard";
-import { sdk } from "@farcaster/miniapp-sdk";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
 
 type CoinQuote = {
@@ -144,10 +143,6 @@ export default function Home() {
   ].filter((t): t is number => typeof t === "number");
   const lastUpdated =
     timestamps.length > 0 ? new Date(Math.max(...timestamps)) : null;
-
-  useEffect(() => {
-    sdk.actions.ready();
-  }, []);
 
   // Fetch logos with SWR (1 hour TTL) - limit to 200 IDs
   const coinIds = coins.length > 0 ? coins.slice(0, 200).map((c) => c.id).join(",") : null;
